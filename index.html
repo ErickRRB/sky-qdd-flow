@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QDD Sky - Flujo de agentes</title>
+  <style>
+    :root {
+      --bg: #fbfbf8;
+      --paper: #fff;
+      --ink: #181818;
+      --muted: #6d716d;
+      --line: #d8d4c8;
+      --orange: #f58a1f;
+      --red: #d63b2d;
+      --blue: #2769c8;
+      --green: #2f8b57;
+      --shadow: 0 18px 45px rgba(31, 27, 18, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(90deg, rgba(24, 24, 24, 0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(24, 24, 24, 0.03) 1px, transparent 1px),
+        var(--bg);
+      background-size: 34px 34px;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button { font: inherit; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px clamp(18px, 4vw, 52px);
+      border-bottom: 1px solid var(--line);
+      background: rgba(251, 251, 248, 0.88);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--ink);
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .mark::before,
+    .mark::after {
+      content: "";
+      position: absolute;
+      top: 12px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .mark::before { left: 9px; }
+    .mark::after { right: 9px; }
+
+    .brand strong {
+      display: block;
+      font-size: 0.98rem;
+      line-height: 1.1;
+    }
+
+    .brand span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 2px;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      border: 1px solid #bdb7a8;
+      background: var(--paper);
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 0.78rem;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 52px;
+    }
+
+    .flow-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1.16fr) minmax(330px, 0.84fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .canvas,
+    .panel,
+    .note-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .canvas {
+      padding: clamp(18px, 3vw, 30px);
+      min-height: 650px;
+      overflow: hidden;
+    }
+
+    .canvas-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4.4vw, 4.1rem);
+      line-height: 0.94;
+      max-width: 760px;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      margin: 10px 0 0;
+      max-width: 700px;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .status-note {
+      width: min(220px, 34vw);
+      border-left: 3px solid var(--blue);
+      padding-left: 11px;
+      color: var(--blue);
+      font-size: 0.82rem;
+      line-height: 1.35;
+      flex: 0 0 auto;
+    }
+
+    .machine-svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 6.3;
+      margin: 18px 0 18px;
+    }
+
+    .stage-rail {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .stage-button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px 11px;
+      min-height: 86px;
+      text-align: left;
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .stage-button:hover {
+      transform: translateY(-2px);
+      border-color: #bdb7a8;
+      box-shadow: 0 8px 18px rgba(31, 27, 18, 0.07);
+    }
+
+    .stage-button[aria-selected="true"] {
+      border-color: var(--ink);
+      box-shadow: inset 0 0 0 2px var(--ink);
+    }
+
+    .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      font-size: 0.72rem;
+      margin-bottom: 10px;
+    }
+
+    .stage-button strong {
+      display: block;
+      font-size: 0.92rem;
+      line-height: 1.12;
+    }
+
+    .stage-button small {
+      display: block;
+      color: var(--muted);
+      margin-top: 5px;
+      line-height: 1.2;
+      font-size: 0.75rem;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 650px;
+    }
+
+    .panel-head {
+      padding: 22px 22px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-kicker {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: clamp(1.45rem, 2.4vw, 2rem);
+      line-height: 1.04;
+    }
+
+    .panel-lead {
+      color: var(--muted);
+      margin: 10px 0 0;
+      font-size: 0.94rem;
+    }
+
+    .panel-body {
+      padding: 20px 22px 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .handoff {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+
+    .handoff .label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .handoff p {
+      margin: 0;
+      line-height: 1.45;
+      font-size: 0.94rem;
+    }
+
+    .command {
+      background: #161616;
+      color: #fff;
+      border-color: #161616;
+    }
+
+    .command code {
+      color: #fff;
+      font-size: 0.86rem;
+      overflow-wrap: anywhere;
+    }
+
+    .artifact-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .artifact-list li {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 0.9rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--orange);
+      flex: 0 0 auto;
+    }
+
+    .loop-card {
+      margin-top: auto;
+      border-top: 1px solid var(--line);
+      padding: 18px 22px 22px;
+      background: repeating-linear-gradient(-8deg, rgba(214, 59, 45, 0.055), rgba(214, 59, 45, 0.055) 8px, transparent 8px, transparent 16px);
+    }
+
+    .loop-card h3 {
+      margin: 0 0 8px;
+      color: var(--red);
+      font-size: 1rem;
+    }
+
+    .loop-card p {
+      margin: 0;
+      color: #5f312d;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .lower-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .note-card {
+      padding: 15px;
+      min-height: 132px;
+    }
+
+    .note-card h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .note-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .footer {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 0 0 30px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .handdrawn {
+      stroke: var(--ink);
+      stroke-width: 2.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .thin { stroke-width: 1.6; }
+    .orange { stroke: var(--orange); }
+    .red { stroke: var(--red); }
+    .blue { stroke: var(--blue); }
+    .fill-ink { fill: var(--ink); stroke: none; }
+    .fill-paper { fill: #fff; }
+
+    .svg-label {
+      font-family: "Comic Sans MS", "Bradley Hand", ui-sans-serif, system-ui, sans-serif;
+      fill: var(--ink);
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    .svg-label.small { font-size: 13px; fill: var(--muted); }
+    .svg-label.red-text { fill: var(--red); }
+    .svg-label.blue-text { fill: var(--blue); }
+
+    .stage-node {
+      transition: opacity 160ms ease, transform 160ms ease;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .stage-node.is-muted { opacity: 0.38; }
+    .stage-node.is-active { transform: translateY(-5px); }
+
+    @media (max-width: 980px) {
+      .flow-shell { grid-template-columns: 1fr; }
+      .canvas, .panel { min-height: auto; }
+      .stage-rail {
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+      .stage-button { min-width: 120px; }
+      .lower-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .chips { justify-content: flex-start; }
+      main { width: min(100vw - 20px, 1180px); padding-top: 12px; }
+      .canvas-header { flex-direction: column; }
+      .status-note { width: 100%; }
+      .panel-head, .panel-body, .loop-card { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <strong>QDD Sky</strong>
+        <span>flujo de agentes de idea a QA</span>
+      </div>
+    </div>
+    <div class="chips" aria-label="Resumen del flujo">
+      <span class="chip">DOR</span>
+      <span class="chip">SPEC</span>
+      <span class="chip">PLAN</span>
+      <span class="chip">IMPLEMENTACIÓN</span>
+      <span class="chip">QA loop</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="flow-shell" aria-label="Flujo QDD interactivo">
+      <div class="canvas">
+        <div class="canvas-header">
+          <div>
+            <h1>De una idea suelta a un reporte QA trazable.</h1>
+            <p class="intro">QDD ordena el trabajo por artefactos: cada agente recibe un insumo concreto, deja una salida auditable y mantiene el mismo hilo hasta el cierre.</p>
+          </div>
+          <aside class="status-note">Xiaohei opera la máquina; los agentes avanzan solo cuando reciben el artefacto correcto.</aside>
+        </div>
+
+        <svg class="machine-svg" viewBox="0 0 920 360" role="img" aria-labelledby="svgTitle svgDesc">
+          <title id="svgTitle">Flujo QDD con Xiaohei</title>
+          <desc id="svgDesc">Una máquina dibujada a mano transforma idea suelta en DOR, SPEC, PLAN, código y QA, con loop de fix y retest.</desc>
+
+          <path class="handdrawn thin" d="M64 249 C 120 243, 160 246, 206 250" />
+          <path class="handdrawn thin" d="M690 253 C 742 245, 807 249, 861 252" />
+
+          <g aria-label="Entrada informal">
+            <path class="handdrawn" d="M38 159 L127 137 L158 196 L65 216 Z" />
+            <path class="handdrawn thin" d="M64 169 L125 154 M70 187 L132 173 M78 204 L133 190" />
+            <text class="svg-label small" x="47" y="132">idea suelta</text>
+            <path class="handdrawn orange" d="M165 178 C 198 176, 225 176, 250 178" />
+            <path class="handdrawn orange" d="M236 166 L253 178 L236 190" />
+          </g>
+
+          <g aria-label="Máquina QDD">
+            <path class="handdrawn fill-paper" d="M252 112 C 307 98, 540 98, 647 116 L674 230 C 579 252, 357 253, 241 229 Z" />
+            <path class="handdrawn thin" d="M278 140 C 374 127, 541 128, 632 142" />
+            <path class="handdrawn thin" d="M267 219 C 375 234, 547 233, 648 219" />
+            <circle class="handdrawn" cx="455" cy="178" r="34" />
+            <path class="handdrawn" d="M489 178 C 525 167, 551 148, 570 119" />
+            <circle class="handdrawn fill-paper" cx="581" cy="106" r="13" />
+
+            <g id="node-dor" class="stage-node">
+              <path class="handdrawn fill-paper" d="M288 160 L348 154 L355 200 L294 206 Z" />
+              <text class="svg-label" x="304" y="186">DOR</text>
+            </g>
+            <g id="node-spec" class="stage-node">
+              <path class="handdrawn fill-paper" d="M366 151 L430 158 L425 205 L361 199 Z" />
+              <text class="svg-label" x="377" y="185">SPEC</text>
+            </g>
+            <g id="node-plan" class="stage-node">
+              <path class="handdrawn fill-paper" d="M445 158 L505 151 L514 198 L452 205 Z" />
+              <text class="svg-label" x="459" y="185">PLAN</text>
+            </g>
+            <g id="node-impl" class="stage-node">
+              <path class="handdrawn fill-paper" d="M529 154 L603 160 L598 207 L523 199 Z" />
+              <text class="svg-label" x="540" y="185">codigo</text>
+            </g>
+          </g>
+
+          <g aria-label="Xiaohei operando">
+            <path class="fill-ink" d="M410 247 C 392 230, 394 188, 421 176 C 454 161, 494 178, 499 215 C 503 244, 484 264, 452 265 C 433 266, 420 257, 410 247 Z" />
+            <circle cx="434" cy="214" r="5.2" fill="#fff" />
+            <circle cx="467" cy="212" r="5.2" fill="#fff" />
+            <path class="handdrawn thin" d="M443 238 C 452 241, 461 239, 469 236" />
+            <path class="handdrawn" d="M418 244 L404 291 M482 241 L493 291" />
+            <path class="handdrawn" d="M408 209 C 381 200, 367 188, 356 169" />
+            <path class="handdrawn" d="M495 208 C 522 195, 545 176, 563 128" />
+            <text class="svg-label blue-text" x="368" y="317">mismo hilo</text>
+            <path class="handdrawn blue thin" d="M451 302 C 513 295, 569 286, 616 267" />
+          </g>
+
+          <g aria-label="Salida QA">
+            <path class="handdrawn orange" d="M673 178 C 705 178, 733 179, 761 181" />
+            <path class="handdrawn orange" d="M747 168 L764 181 L746 192" />
+            <path class="handdrawn fill-paper" d="M773 136 L864 148 L851 232 L761 220 Z" />
+            <path class="handdrawn thin" d="M787 161 L837 168 M783 181 L834 187 M780 201 L815 205" />
+            <text class="svg-label" x="784" y="128">QA</text>
+            <text class="svg-label small" x="773" y="253">reporte QA</text>
+          </g>
+
+          <g aria-label="Loop de fix y retest">
+            <path class="handdrawn red" d="M812 236 C 770 306, 659 319, 589 244" />
+            <path class="handdrawn red" d="M587 265 L588 242 L610 250" />
+            <text class="svg-label red-text" x="657" y="319">fix + retest</text>
+          </g>
+        </svg>
+
+        <nav class="stage-rail" aria-label="Etapas QDD">
+          <button class="stage-button" type="button" data-stage="0" aria-selected="true"><span class="num">01</span><strong>DOR</strong><small>brief, notas o email</small></button>
+          <button class="stage-button" type="button" data-stage="1" aria-selected="false"><span class="num">02</span><strong>SPEC</strong><small>spec-generator</small></button>
+          <button class="stage-button" type="button" data-stage="2" aria-selected="false"><span class="num">03</span><strong>PLAN</strong><small>implementation planner</small></button>
+          <button class="stage-button" type="button" data-stage="3" aria-selected="false"><span class="num">04</span><strong>IMPLEMENTACIÓN</strong><small>plan-implementer</small></button>
+          <button class="stage-button" type="button" data-stage="4" aria-selected="false"><span class="num">05</span><strong>QA</strong><small>sky-qa + fixer</small></button>
+        </nav>
+      </div>
+
+      <aside class="panel" aria-live="polite">
+        <div class="panel-head">
+          <div class="panel-kicker"><span id="stageKicker">Etapa 01</span><span id="stageAgent">Documento de origen</span></div>
+          <h2 class="panel-title" id="stageTitle">DOR</h2>
+          <p class="panel-lead" id="stageLead"></p>
+        </div>
+        <div class="panel-body">
+          <div class="handoff"><div class="label">Tenemos</div><p id="stageInput"></p></div>
+          <div class="handoff command"><div class="label">Ejecutamos</div><p><code id="stageCommand"></code></p></div>
+          <div class="handoff"><div class="label">Recibimos</div><p id="stageOutput"></p></div>
+          <div class="handoff"><div class="label">Artefactos que deja</div><ul class="artifact-list" id="stageArtifacts"></ul></div>
+        </div>
+        <div class="loop-card">
+          <h3>Loop de calidad</h3>
+          <p>Si QA encuentra defectos, <code>sky-qa-fixer</code> clasifica, corrige sobre la rama de implementación y vuelve a ejecutar retest hasta cerrar el reporte.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="lower-grid" aria-label="Principios del flujo">
+      <article class="note-card"><h2>Un artefacto por salto</h2><p>Cada etapa recibe un archivo concreto y deja otro archivo trazable. Eso evita perder decisiones entre conversaciones.</p></article>
+      <article class="note-card"><h2>Contexto reutilizable</h2><p>El planner explora <code>fuente_conocimiento/</code> y los repos antes de proponer pasos, riesgos y prerequisitos.</p></article>
+      <article class="note-card"><h2>QA con retorno</h2><p>El cierre no es “terminé código”: el flujo termina cuando QA tiene evidencias, bugs triageados y summary claro.</p></article>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Fuente conceptual: <code>flujo-qdd.html</code> de QDD-Sky. Sitio standalone para GitHub Pages, sin dependencias externas.
+  </footer>
+
+  <script>
+    const stages = [
+      { key: "dor", kicker: "Etapa 01", agent: "Documento de origen", title: "DOR", lead: "El flujo empieza con material informal y lo convierte en un documento de requerimientos suficientemente claro para el siguiente agente.", input: "Notas de reunión, brief, email del cliente o una idea suelta con contexto de negocio.", command: "Ordenar el insumo como DOR y confirmar alcance antes de pasar a SPEC.", output: "Un DOR listo para alimentar a spec-generator.", artifacts: ["Documento de requerimientos", "Alcance inicial", "Contexto de negocio"], node: "node-dor" },
+      { key: "spec", kicker: "Etapa 02", agent: "spec-generator", title: "SPEC", lead: "El agente convierte el DOR en una especificación técnica accionable, separando contexto ya construido de lo que hay que desarrollar.", input: "Un DOR técnico con objetivo, restricciones y señales de negocio.", command: "Usar spec-generator para producir objetivo, requerimientos, alcance y riesgos.", output: "specs/spec-pago-con-tarjeta-checkout-mdp.md", artifacts: ["Objetivo", "Requerimientos funcionales", "Riesgos y dependencias"], node: "node-spec" },
+      { key: "plan", kicker: "Etapa 03", agent: "spec-implementation-planner", title: "PLAN", lead: "El planner baja la SPEC a pasos por fase y revisa arquitectura, repos, prerequisitos y camino crítico.", input: "Spec aprobada y fuente_conocimiento disponible.", command: "Generar plan de implementación para esta spec.", output: "plans/plan-pago-con-tarjeta-checkout-mdp.md", artifacts: ["Fases", "Pasos por repo", "Prerequisitos", "Criterios de aceptación"], node: "node-plan" },
+      { key: "impl", kicker: "Etapa 04", agent: "plan-implementer", title: "IMPLEMENTACIÓN", lead: "La skill ejecuta el plan paso a paso: ticket, branch, repos, cambios, validación, commits, MR y doc para QA.", input: "Plan por fases con criterios de aceptación claros.", command: "plan-implementer plans/plan-pago-...md --fase 1", output: "Commits, MR y docs/impl-VC-4821.md.", artifacts: ["Branch", "Commits", "MR", "Doc de implementación"], node: "node-impl" },
+      { key: "qa", kicker: "Etapa 05", agent: "sky-qa", title: "QA", lead: "QA genera plan de pruebas, ejecuta casos, registra evidencias y activa el loop de fixes cuando detecta defectos.", input: "Doc de implementación detallada con cambios y alcance.", command: "sky-qa docs/impl-VC-4821.md --env qa", output: ".sky-qa/<TICKET>/summary.md con TCs, bugs y estado.", artifacts: ["test_plan.md", "Resultados TC", "Bugs", "summary.md"], node: null }
+    ];
+
+    const buttons = Array.from(document.querySelectorAll(".stage-button"));
+    const artifactList = document.getElementById("stageArtifacts");
+    const nodeIds = ["node-dor", "node-spec", "node-plan", "node-impl"];
+
+    function setText(id, value) { document.getElementById(id).textContent = value; }
+    function renderArtifacts(items) {
+      artifactList.innerHTML = "";
+      items.forEach((item) => {
+        const li = document.createElement("li");
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        li.appendChild(dot);
+        li.appendChild(document.createTextNode(item));
+        artifactList.appendChild(li);
+      });
+    }
+    function selectStage(index) {
+      const stage = stages[index];
+      buttons.forEach((button, buttonIndex) => button.setAttribute("aria-selected", String(buttonIndex === index)));
+      setText("stageKicker", stage.kicker);
+      setText("stageAgent", stage.agent);
+      setText("stageTitle", stage.title);
+      setText("stageLead", stage.lead);
+      setText("stageInput", stage.input);
+      setText("stageCommand", stage.command);
+      setText("stageOutput", stage.output);
+      renderArtifacts(stage.artifacts);
+      nodeIds.forEach((id) => {
+        const node = document.getElementById(id);
+        node.classList.toggle("is-muted", Boolean(stage.node) && id !== stage.node);
+        node.classList.toggle("is-active", id === stage.node);
+      });
+    }
+    buttons.forEach((button) => button.addEventListener("click", () => selectStage(Number(button.dataset.stage))));
+    selectStage(0);
+  </script>
+</body>
+</html>

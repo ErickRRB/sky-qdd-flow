@@ -1,0 +1,11 @@
+site:
+  title: Sky QDD Flow
+  slug: sky-qdd-flow
+repo: ErickRRB/sky-qdd-flow
+pages_url: https://ErickRRB.github.io/sky-qdd-flow/
+source_zip: /Users/erick/Downloads/QDD-Sky-20260608T173704Z-3-001.zip
+source_html: QDD-Sky/flujo-qdd.html
+notes:
+  - Standalone static HTML served by GitHub Pages.
+  - Reinterpreta DOR -> SPEC -> PLAN -> IMPLEMENTACION -> QA con loop fix + retest.
+  - Estetica Xiaohei sin texto chino.
