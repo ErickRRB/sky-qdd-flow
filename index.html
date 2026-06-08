@@ -1,627 +1,1686 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QDD Sky - Flujo de agentes</title>
-  <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qurable Drive Development (QDD) — Flujo DOR → SPEC → PLAN → IMPLEMENTACIÓN → QA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1e222d;
+    --border: #2a2f3d;
+    --text: #e6e9f0;
+    --muted: #9aa3b5;
+    --accent: #6ee7b7;
+    --accent-2: #60a5fa;
+    --accent-3: #f0abfc;
+    --accent-4: #fbbf24;
+    --accent-5: #fb7185;
+    --code-bg: #11141c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+  }
+
+  /* Blobs decorativos animados */
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.35;
+    z-index: 0;
+    pointer-events: none;
+    animation: float 16s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(30px, -24px) scale(1.12); }
+    100% { transform: translate(0, 0) scale(1); }
+  }
+  @keyframes floatSlow {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(-26px, 22px) scale(1.08); }
+    100% { transform: translate(0, 0) scale(1); }
+  }
+  @keyframes drift {
+    0%   { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -240; }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+
+  header {
+    position: relative;
+    overflow: hidden;
+    padding: 56px 24px 28px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: radial-gradient(circle at 50% 0%, rgba(110,231,183,0.08), transparent 60%);
+  }
+  header .blob.b1 { width: 320px; height: 320px; left: -90px; top: -120px; background: var(--accent); }
+  header .blob.b2 { width: 280px; height: 280px; right: -80px; top: -60px; background: var(--accent-2); animation-name: floatSlow; }
+  header .blob.b3 { width: 240px; height: 240px; left: 38%; bottom: -160px; background: var(--accent-3); animation-name: floatSlow; animation-duration: 20s; }
+
+  header .eyebrow {
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(110,231,183,0.35);
+    background: rgba(110,231,183,0.08);
+    border-radius: 999px;
+    padding: 5px 14px;
+    margin-bottom: 14px;
+  }
+  header h1 {
+    position: relative;
+    z-index: 1;
+    margin: 0 0 8px;
+    font-size: 2.3rem;
+    letter-spacing: 0.5px;
+  }
+  header h1 span {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: hue 8s linear infinite;
+  }
+  @keyframes hue {
+    0%   { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+  header p {
+    position: relative;
+    z-index: 1;
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 760px;
+    margin: 8px auto 0;
+  }
+
+  /* Ilustración hero: cinta del pipeline dibujada a mano */
+  .hero-art {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 30px auto 0;
+  }
+  .hero-art svg { width: 100%; height: auto; display: block; }
+  .hero-art .track {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 2;
+  }
+  .hero-art .track-run {
+    fill: none;
+    stroke: url(#trackGradient);
+    stroke-width: 2.5;
+    stroke-dasharray: 10 10;
+    animation: drift 6s linear infinite;
+  }
+  .hero-art .stop circle { stroke-width: 2; }
+  .hero-art .stop text {
+    font-size: 11px;
+    font-weight: 700;
+    fill: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .hero-art .stop text.lbl {
+    font-size: 9.5px;
+    font-weight: 500;
+    fill: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .hero-art .stop.s1 { animation: bob 3.4s ease-in-out infinite; }
+  .hero-art .stop.s2 { animation: bob 3.4s ease-in-out infinite; animation-delay: .3s; }
+  .hero-art .stop.s3 { animation: bob 3.4s ease-in-out infinite; animation-delay: .6s; }
+  .hero-art .stop.s4 { animation: bob 3.4s ease-in-out infinite; animation-delay: .9s; }
+  .hero-art .stop.s5 { animation: bob 3.4s ease-in-out infinite; animation-delay: 1.2s; }
+
+  .container { position: relative; max-width: 1080px; margin: 0 auto; padding: 36px 20px 80px; }
+
+  /* Pipeline diagram */
+  .pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    margin: 10px 0 48px;
+  }
+  .pipeline .node {
+    flex: 1 1 150px;
+    min-width: 130px;
+    text-align: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .pipeline .node small {
+    display: block;
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 0.74rem;
+    margin-top: 4px;
+  }
+  .pipeline .arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 1.4rem;
+    flex: 0 0 28px;
+  }
+  .pipeline .node.dor   { border-top: 3px solid var(--accent-4); }
+  .pipeline .node.spec  { border-top: 3px solid var(--accent-2); }
+  .pipeline .node.plan  { border-top: 3px solid var(--accent-3); }
+  .pipeline .node.impl  { border-top: 3px solid var(--accent); }
+  .pipeline .node.qa    { border-top: 3px solid var(--accent-5); }
+
+  .loop-note {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: -34px 0 48px;
+  }
+  .loop-note code { color: var(--accent-5); }
+
+  /* Stage cards */
+  .stage {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 18px;
+    margin-bottom: 28px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .stage .badge {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #0f1117;
+  }
+  .stage.dor  .badge { background: var(--accent-4); }
+  .stage.spec .badge { background: var(--accent-2); }
+  .stage.plan .badge { background: var(--accent-3); }
+  .stage.impl .badge { background: var(--accent); }
+  .stage.qa   .badge { background: var(--accent-5); }
+
+  .stage h2 {
+    margin: 0 0 4px;
+    font-size: 1.25rem;
+  }
+  .stage h2 .tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 9px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .stage p.lead { margin: 6px 0 14px; color: var(--muted); }
+
+  /* Tira didáctica "tenemos → ejecutamos → recibimos" — primer plano */
+  .flow-strip {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin: 4px 0 16px;
+  }
+  .flow-step {
+    flex: 1 1 0;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 13px;
+  }
+  .flow-step .k {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .flow-step .v { font-size: 0.86rem; color: var(--text); }
+  .flow-step.cmd { background: var(--code-bg); }
+  .flow-step.cmd .v {
+    font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+  }
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 1.25rem;
+    flex: 0 0 22px;
+  }
+  .stage.dor  .flow-step.cmd .v { color: var(--accent-4); }
+  .stage.spec .flow-step.cmd .v { color: var(--accent-2); }
+  .stage.plan .flow-step.cmd .v { color: var(--accent-3); }
+  .stage.impl .flow-step.cmd .v { color: var(--accent); }
+  .stage.qa   .flow-step.cmd .v { color: var(--accent-5); }
+  @media (max-width: 640px) {
+    .flow-strip { flex-direction: column; }
+    .flow-arrow { transform: rotate(90deg); padding: 2px 0; }
+  }
+
+  /* Detalle técnico — queda en segundo plano, plegado */
+  details.more {
+    margin-top: 2px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  details.more summary {
+    cursor: pointer;
+    font-size: 0.74rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 700;
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before {
+    content: "▸";
+    font-size: 0.65rem;
+    color: var(--muted);
+    transition: transform 0.18s ease;
+    display: inline-block;
+  }
+  details.more[open] summary::before { transform: rotate(90deg); }
+  details.more .more-body {
+    margin-top: 12px;
+    opacity: 0.82;
+  }
+  details.more .more-body p.lead { font-size: 0.88rem; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 760px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .stage { grid-template-columns: 1fr; }
+    .stage .badge { width: 48px; height: 48px; font-size: 1.2rem; }
+  }
+
+  .box-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 0.83rem;
+    margin: 0;
+  }
+  code { font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace; }
+  .prompt-line { color: var(--accent); }
+  .out-line { color: var(--muted); }
+  .file-line { color: var(--accent-2); }
+
+  ul.compact { margin: 6px 0 0; padding-left: 18px; color: var(--text); }
+  ul.compact li { margin-bottom: 4px; }
+  ul.compact li b { color: var(--accent); }
+
+  .footer-note {
+    margin-top: 36px;
+    padding: 18px 20px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  .footer-note b { color: var(--text); }
+
+  /* Iconos dibujados dentro de los badges de etapa */
+  .stage .badge svg {
+    width: 30px;
+    height: 30px;
+    stroke: #0f1117;
+    stroke-width: 1.8;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .stage .badge { position: relative; }
+  .stage .badge .step-no {
+    position: absolute;
+    bottom: -7px;
+    right: -7px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.68rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Sección de beneficios — estilo "marketing" */
+  .section-title {
+    text-align: center;
+    margin: 64px 0 8px;
+  }
+  .section-title h2 {
+    font-size: 1.4rem;
+    margin: 0 0 6px;
+  }
+  .section-title p {
+    color: var(--muted);
+    margin: 0 auto;
+    max-width: 620px;
+    font-size: 0.92rem;
+  }
+  .benefits {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 26px 0 10px;
+  }
+  @media (max-width: 860px) { .benefits { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .benefits { grid-template-columns: 1fr; } }
+  .benefit {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 16px;
+    text-align: center;
+    transition: transform .25s ease, border-color .25s ease;
+  }
+  .benefit:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+  }
+  .benefit .icon-wrap {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 12px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(110,231,183,0.12);
+  }
+  .benefit .icon-wrap svg {
+    width: 26px;
+    height: 26px;
+    stroke: var(--accent);
+    stroke-width: 1.8;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .benefit:nth-child(2) .icon-wrap { background: rgba(96,165,250,0.12); }
+  .benefit:nth-child(2) .icon-wrap svg { stroke: var(--accent-2); }
+  .benefit:nth-child(3) .icon-wrap { background: rgba(240,171,252,0.12); }
+  .benefit:nth-child(3) .icon-wrap svg { stroke: var(--accent-3); }
+  .benefit:nth-child(4) .icon-wrap { background: rgba(251,191,36,0.12); }
+  .benefit:nth-child(4) .icon-wrap svg { stroke: var(--accent-4); }
+  .benefit h3 { margin: 0 0 6px; font-size: 1rem; }
+  .benefit p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+  /* Banda de cierre estilo CTA */
+  .cta-band {
+    margin-top: 56px;
+    border-radius: 16px;
+    padding: 30px 26px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(120deg, rgba(110,231,183,0.12), rgba(96,165,250,0.10), rgba(240,171,252,0.10));
+    border: 1px solid var(--border);
+  }
+  .cta-band h3 {
+    margin: 0 0 6px;
+    font-size: 1.2rem;
+  }
+  .cta-band p {
+    margin: 0 auto;
+    max-width: 560px;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+  .cta-band .pill-row {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+  .cta-band .pill {
+    font-family: "SF Mono", "Fira Code", Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 6px 13px;
+  }
+
+  /* Kinetic blueprint refresh */
+  :root {
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #edf3f8;
+    --border: #c9d6e2;
+    --rail: #d9e4ec;
+    --text: #132235;
+    --muted: #607082;
+    --accent: #0e7490;
+    --accent-2: #2563eb;
+    --accent-3: #be123c;
+    --accent-4: #d97706;
+    --accent-5: #059669;
+    --code-bg: #101827;
+    --shadow: 0 18px 44px rgba(24, 39, 59, 0.12);
+    --grid-line: rgba(14, 116, 144, 0.09);
+    --radius: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #fbfbf8;
-      --paper: #fff;
-      --ink: #181818;
-      --muted: #6d716d;
-      --line: #d8d4c8;
-      --orange: #f58a1f;
-      --red: #d63b2d;
-      --blue: #2769c8;
-      --green: #2f8b57;
-      --shadow: 0 18px 45px rgba(31, 27, 18, 0.08);
+      --bg: #0b1117;
+      --surface: #111b24;
+      --panel: #111b24;
+      --panel-2: #172330;
+      --border: #2b3b4c;
+      --rail: #314253;
+      --text: #e8eef6;
+      --muted: #9eacba;
+      --accent: #22d3ee;
+      --accent-2: #60a5fa;
+      --accent-3: #fb7185;
+      --accent-4: #f59e0b;
+      --accent-5: #34d399;
+      --code-bg: #070b12;
+      --shadow: 0 22px 55px rgba(0, 0, 0, 0.35);
+      --grid-line: rgba(96, 165, 250, 0.08);
     }
+  }
 
-    * { box-sizing: border-box; }
+  html {
+    scroll-behavior: smooth;
+  }
 
-    body {
-      margin: 0;
-      min-height: 100vh;
+  body {
+    font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+      var(--bg);
+    background-size: 34px 34px;
+    letter-spacing: 0;
+  }
+
+  code,
+  pre,
+  .flow-step.cmd .v,
+  .cta-band .pill {
+    font-family: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  .scroll-progress {
+    position: fixed;
+    inset: 0 auto auto 0;
+    z-index: 20;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-4), var(--accent-2), var(--accent), var(--accent-5));
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+    transform-origin: left center;
+  }
+
+  .blob {
+    display: none;
+  }
+
+  header {
+    min-height: 92vh;
+    display: grid;
+    align-content: center;
+    padding: clamp(46px, 7vw, 76px) 24px 34px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.2)),
+      transparent;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    header {
       background:
-        linear-gradient(90deg, rgba(24, 24, 24, 0.035) 1px, transparent 1px),
-        linear-gradient(180deg, rgba(24, 24, 24, 0.03) 1px, transparent 1px),
-        var(--bg);
-      background-size: 34px 34px;
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      letter-spacing: 0;
+        linear-gradient(180deg, rgba(17, 27, 36, 0.72), rgba(17, 27, 36, 0.06)),
+        transparent;
+    }
+  }
+
+  header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(115deg, transparent 0 34%, rgba(14, 116, 144, 0.12) 36%, transparent 39%),
+      linear-gradient(115deg, transparent 0 58%, rgba(217, 119, 6, 0.11) 60%, transparent 63%);
+    clip-path: inset(0 100% 0 0);
+    animation: blueprintReveal 1.25s cubic-bezier(.2, .8, .2, 1) .1s forwards;
+  }
+
+  header .eyebrow,
+  header h1,
+  header p,
+  header .replay-flow,
+  header .hero-art {
+    width: min(1040px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header .eyebrow {
+    border-radius: 999px;
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    padding: 6px 12px;
+  }
+
+  header h1 {
+    max-width: 1040px;
+    margin-top: 12px;
+    margin-bottom: 10px;
+    font-size: clamp(2.45rem, 7vw, 5.6rem);
+    line-height: 0.96;
+    letter-spacing: 0;
+  }
+
+  header h1 span {
+    background: none;
+    color: var(--accent);
+    animation: none;
+  }
+
+  header p {
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+    color: var(--muted);
+    font-size: clamp(1rem, 1.8vw, 1.18rem);
+  }
+
+  .replay-flow {
+    position: relative;
+    z-index: 1;
+    justify-self: start;
+    display: inline-flex;
+    width: auto;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 9px 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font: 700 0.82rem/1 "IBM Plex Mono", monospace;
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(24, 39, 59, 0.08);
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .replay-flow:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: var(--shadow);
+  }
+
+  .hero-art {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--accent) 8%), var(--surface));
+    padding: clamp(12px, 2vw, 22px);
+    box-shadow: var(--shadow);
+  }
+
+  .hero-art svg {
+    overflow: visible;
+  }
+
+  .hero-art .track {
+    stroke: var(--rail);
+    stroke-width: 4;
+  }
+
+  .hero-art .track-run {
+    stroke-width: 4;
+    stroke-dasharray: 940;
+    stroke-dashoffset: 940;
+    animation: drawPath 2.45s cubic-bezier(.33, 1, .68, 1) .25s forwards;
+  }
+
+  .hero-art .stop {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: popStop .42s cubic-bezier(.2, .8, .2, 1) forwards;
+  }
+
+  .hero-art .stop.s1 { animation-delay: .45s; }
+  .hero-art .stop.s2 { animation-delay: .82s; }
+  .hero-art .stop.s3 { animation-delay: 1.18s; }
+  .hero-art .stop.s4 { animation-delay: 1.55s; }
+  .hero-art .stop.s5 { animation-delay: 1.92s; }
+
+  .hero-art .stop circle {
+    stroke: var(--surface);
+    stroke-width: 3;
+    filter: drop-shadow(0 8px 14px rgba(19, 34, 53, 0.2));
+  }
+
+  .hero-art .stop text {
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0;
+  }
+
+  .hero-art .stop text.lbl {
+    fill: var(--muted);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .hero-art img,
+  .stage-illustration img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .hero-art img {
+    border-radius: calc(var(--radius) - 2px);
+    transform-origin: center;
+    animation: imageDrawIn .82s cubic-bezier(.2, .8, .2, 1) .35s both;
+  }
+
+  .hero-art.is-replaying img {
+    animation: imageReplay .9s cubic-bezier(.2, .8, .2, 1) both;
+  }
+
+  .stage-illustration {
+    position: relative;
+    margin: 14px 0 16px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+    border-radius: var(--radius);
+    background: #fff;
+  }
+
+  .stage-illustration::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent 0 38%, rgba(255, 255, 255, 0.72) 50%, transparent 62%);
+    transform: translateX(-120%);
+  }
+
+  .stage.is-visible .stage-illustration::after {
+    animation: paperSweep .75s ease .18s both;
+  }
+
+  .stage-illustration img {
+    filter: saturate(.98) contrast(1.04);
+    transition: transform .32s ease;
+  }
+
+  .stage:hover .stage-illustration img {
+    transform: scale(1.015);
+  }
+
+  .container {
+    max-width: 1120px;
+    padding-top: 42px;
+  }
+
+  .pipeline {
+    position: sticky;
+    top: 12px;
+    z-index: 8;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 54px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 16px 36px rgba(24, 39, 59, 0.1);
+  }
+
+  .pipeline .node {
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    text-align: left;
+    padding: 14px 14px 13px;
+    transform: translateY(0);
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .pipeline .node::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--accent);
+  }
+
+  .pipeline .node::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 3px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+
+  .pipeline .node.flowing {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+    box-shadow: 0 12px 24px rgba(24, 39, 59, 0.13);
+  }
+
+  .pipeline .node.flowing::after {
+    animation: loadBar .68s ease forwards;
+  }
+
+  .pipeline .node small {
+    color: var(--muted);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+  }
+
+  .pipeline .node.dor::before,
+  .pipeline .node.dor::after { background: var(--accent-4); }
+  .pipeline .node.spec::before,
+  .pipeline .node.spec::after { background: var(--accent-2); }
+  .pipeline .node.plan::before,
+  .pipeline .node.plan::after { background: var(--accent-3); }
+  .pipeline .node.impl::before,
+  .pipeline .node.impl::after { background: var(--accent); }
+  .pipeline .node.qa::before,
+  .pipeline .node.qa::after { background: var(--accent-5); }
+
+  .pipeline .arrow {
+    position: relative;
+    flex-basis: 26px;
+    color: transparent;
+    font-size: 0;
+  }
+
+  .pipeline .arrow::before,
+  .pipeline .arrow::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    background: var(--rail);
+  }
+
+  .pipeline .arrow::before {
+    left: 2px;
+    width: 20px;
+    height: 2px;
+    transform: scaleX(0);
+    transform-origin: left center;
+    animation: connectorGrow .45s ease forwards;
+  }
+
+  .pipeline .arrow::after {
+    right: 1px;
+    width: 8px;
+    height: 8px;
+    border-top: 2px solid var(--rail);
+    border-right: 2px solid var(--rail);
+    background: transparent;
+    transform: translateY(-50%) rotate(45deg) scale(.6);
+    opacity: 0;
+    animation: arrowPop .3s ease forwards;
+  }
+
+  .pipeline .arrow:nth-of-type(2)::before,
+  .pipeline .arrow:nth-of-type(2)::after { animation-delay: .35s; }
+  .pipeline .arrow:nth-of-type(4)::before,
+  .pipeline .arrow:nth-of-type(4)::after { animation-delay: .7s; }
+  .pipeline .arrow:nth-of-type(6)::before,
+  .pipeline .arrow:nth-of-type(6)::after { animation-delay: 1.05s; }
+  .pipeline .arrow:nth-of-type(8)::before,
+  .pipeline .arrow:nth-of-type(8)::after { animation-delay: 1.4s; }
+
+  .loop-note {
+    max-width: 880px;
+    margin: -32px auto 54px;
+    padding: 11px 14px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--surface) 78%, transparent);
+    color: var(--muted);
+  }
+
+  .section-title {
+    margin: 70px 0 16px;
+  }
+
+  .section-title h2 {
+    font-size: clamp(1.35rem, 3vw, 2rem);
+    letter-spacing: 0;
+  }
+
+  .section-title p {
+    color: var(--muted);
+  }
+
+  .benefits {
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .benefit,
+  .stage,
+  .cta-band,
+  .footer-note {
+    border-radius: var(--radius);
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.5), 0 12px 26px rgba(24, 39, 59, 0.08);
+  }
+
+  .benefit {
+    text-align: left;
+    padding: 18px;
+  }
+
+  .benefit:hover,
+  .stage:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+  }
+
+  .benefit .icon-wrap {
+    width: 46px;
+    height: 46px;
+    margin: 0 0 12px;
+    border-radius: var(--radius);
+  }
+
+  .benefit h3 {
+    color: var(--text);
+  }
+
+  .benefit p {
+    color: var(--muted);
+  }
+
+  .stage {
+    position: relative;
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+    padding: clamp(18px, 3vw, 26px);
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  }
+
+  .stage::before {
+    content: "";
+    position: absolute;
+    left: 56px;
+    top: -25px;
+    width: 2px;
+    height: 25px;
+    background: linear-gradient(180deg, transparent, var(--rail));
+  }
+
+  .stage.dor::before {
+    display: none;
+  }
+
+  .stage::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 5px;
+    border-radius: var(--radius) 0 0 var(--radius);
+    background: var(--accent);
+  }
+
+  .stage.dor::after { background: var(--accent-4); }
+  .stage.spec::after { background: var(--accent-2); }
+  .stage.plan::after { background: var(--accent-3); }
+  .stage.impl::after { background: var(--accent); }
+  .stage.qa::after { background: var(--accent-5); }
+
+  .stage .badge {
+    width: 62px;
+    height: 62px;
+    border-radius: var(--radius);
+    box-shadow: inset 0 -10px 18px rgba(0, 0, 0, 0.12);
+  }
+
+  .stage .badge .step-no {
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .stage h2 {
+    letter-spacing: 0;
+  }
+
+  .stage h2 .tag {
+    border-radius: 999px;
+    background: var(--panel-2);
+  }
+
+  .flow-strip {
+    gap: 10px;
+  }
+
+  .flow-step {
+    position: relative;
+    min-width: 0;
+    border-radius: var(--radius);
+    background: var(--panel-2);
+    transition: transform .18s ease, border-color .18s ease;
+  }
+
+  .flow-step:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+  }
+
+  .flow-step .k {
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0.06em;
+  }
+
+  .flow-step.cmd {
+    background: var(--code-bg);
+    color: #e8eef6;
+  }
+
+  .flow-arrow {
+    color: var(--rail);
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  details.more {
+    border-color: var(--border);
+  }
+
+  details.more summary {
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0.06em;
+  }
+
+  pre {
+    border-radius: var(--radius);
+    background: var(--code-bg);
+    color: #e8eef6;
+  }
+
+  .cta-band {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 45%),
+      var(--surface);
+  }
+
+  .footer-note {
+    border-style: dashed;
+  }
+
+  .revealable {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity .56s cubic-bezier(.2, .8, .2, 1) var(--reveal-delay, 0ms),
+      transform .56s cubic-bezier(.2, .8, .2, 1) var(--reveal-delay, 0ms);
+  }
+
+  .revealable.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @keyframes blueprintReveal {
+    to { clip-path: inset(0 0 0 0); }
+  }
+
+  @keyframes drawPath {
+    to { stroke-dashoffset: 0; }
+  }
+
+  @keyframes popStop {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(.78);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes connectorGrow {
+    to { transform: scaleX(1); }
+  }
+
+  @keyframes arrowPop {
+    to {
+      opacity: 1;
+      transform: translateY(-50%) rotate(45deg) scale(1);
+    }
+  }
+
+  @keyframes loadBar {
+    0% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+  }
+
+  @keyframes imageDrawIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(.985);
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
+  @keyframes imageReplay {
+    0% {
+      opacity: .65;
+      transform: scale(.985);
+      clip-path: inset(0 100% 0 0);
+    }
+    70% {
+      opacity: 1;
+      clip-path: inset(0 0 0 0);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
+  @keyframes paperSweep {
+    from { transform: translateX(-120%); }
+    to { transform: translateX(120%); }
+  }
+
+  @media (max-width: 760px) {
+    header {
+      min-height: auto;
+      padding-top: 42px;
     }
 
-    button { font: inherit; }
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      padding: 18px clamp(18px, 4vw, 52px);
-      border-bottom: 1px solid var(--line);
-      background: rgba(251, 251, 248, 0.88);
-      backdrop-filter: blur(12px);
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      min-width: 0;
-    }
-
-    .mark {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--ink);
-      position: relative;
-      flex: 0 0 auto;
-    }
-
-    .mark::before,
-    .mark::after {
-      content: "";
-      position: absolute;
-      top: 12px;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: #fff;
-    }
-
-    .mark::before { left: 9px; }
-    .mark::after { right: 9px; }
-
-    .brand strong {
-      display: block;
-      font-size: 0.98rem;
-      line-height: 1.1;
-    }
-
-    .brand span {
-      display: block;
-      color: var(--muted);
-      font-size: 0.78rem;
-      margin-top: 2px;
-    }
-
-    .chips {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .chip {
-      border: 1px solid #bdb7a8;
-      background: var(--paper);
-      border-radius: 999px;
-      padding: 7px 11px;
-      font-size: 0.78rem;
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    main {
-      width: min(1180px, calc(100vw - 32px));
-      margin: 0 auto;
-      padding: 24px 0 52px;
-    }
-
-    .flow-shell {
+    .pipeline {
+      position: static;
       display: grid;
-      grid-template-columns: minmax(0, 1.16fr) minmax(330px, 0.84fr);
-      gap: 22px;
-      align-items: stretch;
+      grid-template-columns: 1fr;
     }
 
-    .canvas,
-    .panel,
-    .note-card {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      box-shadow: var(--shadow);
+    .pipeline .arrow {
+      min-height: 18px;
+      transform: rotate(90deg);
     }
 
-    .canvas {
-      padding: clamp(18px, 3vw, 30px);
-      min-height: 650px;
-      overflow: hidden;
+    .stage {
+      grid-template-columns: 1fr;
     }
 
-    .canvas-header {
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 20px;
+    .stage::before {
+      left: 30px;
     }
 
-    h1 {
-      margin: 0;
-      font-size: clamp(1.8rem, 4.4vw, 4.1rem);
-      line-height: 0.94;
-      max-width: 760px;
-      letter-spacing: 0;
+    .stage::after {
+      width: 4px;
+    }
+  }
+
+  @media (max-width: 520px) {
+    header h1 {
+      font-size: clamp(2.1rem, 15vw, 3rem);
     }
 
-    .intro {
-      margin: 10px 0 0;
-      max-width: 700px;
-      color: var(--muted);
-      font-size: 0.98rem;
+    .hero-art {
+      padding: 10px;
     }
 
-    .status-note {
-      width: min(220px, 34vw);
-      border-left: 3px solid var(--blue);
-      padding-left: 11px;
-      color: var(--blue);
-      font-size: 0.82rem;
-      line-height: 1.35;
-      flex: 0 0 auto;
-    }
-
-    .machine-svg {
+    .stage h2 .tag {
       display: block;
-      width: 100%;
-      height: auto;
-      aspect-ratio: 16 / 6.3;
-      margin: 18px 0 18px;
+      width: fit-content;
+      margin: 8px 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition: none !important;
     }
 
-    .stage-rail {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 22px;
+    .revealable {
+      opacity: 1;
+      transform: none;
     }
-
-    .stage-button {
-      border: 1px solid var(--line);
-      background: #fff;
-      border-radius: 8px;
-      padding: 12px 11px;
-      min-height: 86px;
-      text-align: left;
-      cursor: pointer;
-      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-    }
-
-    .stage-button:hover {
-      transform: translateY(-2px);
-      border-color: #bdb7a8;
-      box-shadow: 0 8px 18px rgba(31, 27, 18, 0.07);
-    }
-
-    .stage-button[aria-selected="true"] {
-      border-color: var(--ink);
-      box-shadow: inset 0 0 0 2px var(--ink);
-    }
-
-    .num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: var(--ink);
-      color: #fff;
-      font-size: 0.72rem;
-      margin-bottom: 10px;
-    }
-
-    .stage-button strong {
-      display: block;
-      font-size: 0.92rem;
-      line-height: 1.12;
-    }
-
-    .stage-button small {
-      display: block;
-      color: var(--muted);
-      margin-top: 5px;
-      line-height: 1.2;
-      font-size: 0.75rem;
-    }
-
-    .panel {
-      display: flex;
-      flex-direction: column;
-      min-height: 650px;
-    }
-
-    .panel-head {
-      padding: 22px 22px 18px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .panel-kicker {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 0.76rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 12px;
-    }
-
-    .panel-title {
-      margin: 0;
-      font-size: clamp(1.45rem, 2.4vw, 2rem);
-      line-height: 1.04;
-    }
-
-    .panel-lead {
-      color: var(--muted);
-      margin: 10px 0 0;
-      font-size: 0.94rem;
-    }
-
-    .panel-body {
-      padding: 20px 22px 22px;
-      display: grid;
-      gap: 14px;
-    }
-
-    .handoff {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 14px;
-      background: #fff;
-    }
-
-    .handoff .label {
-      color: var(--muted);
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 8px;
-    }
-
-    .handoff p {
-      margin: 0;
-      line-height: 1.45;
-      font-size: 0.94rem;
-    }
-
-    .command {
-      background: #161616;
-      color: #fff;
-      border-color: #161616;
-    }
-
-    .command code {
-      color: #fff;
-      font-size: 0.86rem;
-      overflow-wrap: anywhere;
-    }
-
-    .artifact-list {
-      display: grid;
-      gap: 8px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .artifact-list li {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-size: 0.9rem;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--orange);
-      flex: 0 0 auto;
-    }
-
-    .loop-card {
-      margin-top: auto;
-      border-top: 1px solid var(--line);
-      padding: 18px 22px 22px;
-      background: repeating-linear-gradient(-8deg, rgba(214, 59, 45, 0.055), rgba(214, 59, 45, 0.055) 8px, transparent 8px, transparent 16px);
-    }
-
-    .loop-card h3 {
-      margin: 0 0 8px;
-      color: var(--red);
-      font-size: 1rem;
-    }
-
-    .loop-card p {
-      margin: 0;
-      color: #5f312d;
-      font-size: 0.9rem;
-      line-height: 1.45;
-    }
-
-    .lower-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 18px;
-    }
-
-    .note-card {
-      padding: 15px;
-      min-height: 132px;
-    }
-
-    .note-card h2 {
-      margin: 0 0 8px;
-      font-size: 1rem;
-    }
-
-    .note-card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.45;
-    }
-
-    .footer {
-      width: min(1180px, calc(100vw - 32px));
-      margin: 0 auto;
-      padding: 0 0 30px;
-      color: var(--muted);
-      font-size: 0.8rem;
-    }
-
-    .handdrawn {
-      stroke: var(--ink);
-      stroke-width: 2.7;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      fill: none;
-    }
-
-    .thin { stroke-width: 1.6; }
-    .orange { stroke: var(--orange); }
-    .red { stroke: var(--red); }
-    .blue { stroke: var(--blue); }
-    .fill-ink { fill: var(--ink); stroke: none; }
-    .fill-paper { fill: #fff; }
-
-    .svg-label {
-      font-family: "Comic Sans MS", "Bradley Hand", ui-sans-serif, system-ui, sans-serif;
-      fill: var(--ink);
-      font-size: 17px;
-      letter-spacing: 0;
-    }
-
-    .svg-label.small { font-size: 13px; fill: var(--muted); }
-    .svg-label.red-text { fill: var(--red); }
-    .svg-label.blue-text { fill: var(--blue); }
-
-    .stage-node {
-      transition: opacity 160ms ease, transform 160ms ease;
-      transform-box: fill-box;
-      transform-origin: center;
-    }
-
-    .stage-node.is-muted { opacity: 0.38; }
-    .stage-node.is-active { transform: translateY(-5px); }
-
-    @media (max-width: 980px) {
-      .flow-shell { grid-template-columns: 1fr; }
-      .canvas, .panel { min-height: auto; }
-      .stage-rail {
-        grid-template-columns: repeat(5, minmax(120px, 1fr));
-        overflow-x: auto;
-        padding-bottom: 6px;
-      }
-      .stage-button { min-width: 120px; }
-      .lower-grid { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 640px) {
-      .topbar {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-      .chips { justify-content: flex-start; }
-      main { width: min(100vw - 20px, 1180px); padding-top: 12px; }
-      .canvas-header { flex-direction: column; }
-      .status-note { width: 100%; }
-      .panel-head, .panel-body, .loop-card { padding-left: 16px; padding-right: 16px; }
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="mark" aria-hidden="true"></div>
-      <div>
-        <strong>QDD Sky</strong>
-        <span>flujo de agentes de idea a QA</span>
-      </div>
-    </div>
-    <div class="chips" aria-label="Resumen del flujo">
-      <span class="chip">DOR</span>
-      <span class="chip">SPEC</span>
-      <span class="chip">PLAN</span>
-      <span class="chip">IMPLEMENTACIÓN</span>
-      <span class="chip">QA loop</span>
-    </div>
-  </header>
 
-  <main>
-    <section class="flow-shell" aria-label="Flujo QDD interactivo">
-      <div class="canvas">
-        <div class="canvas-header">
-          <div>
-            <h1>De una idea suelta a un reporte QA trazable.</h1>
-            <p class="intro">QDD ordena el trabajo por artefactos: cada agente recibe un insumo concreto, deja una salida auditable y mantiene el mismo hilo hasta el cierre.</p>
+<div class="scroll-progress" aria-hidden="true"></div>
+
+<header>
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+
+  <span class="eyebrow">✦ De la idea al deploy, sin perder el hilo</span>
+  <h1>Qurable Drive Development <span>(QDD)</span></h1>
+  <p>Flujo de trabajo guiado por agentes y skills de Claude Code para el ecosistema Sky Airline:
+  desde un documento informal hasta el reporte de QA, pasando por la especificación técnica,
+  el plan de implementación y el código en producción.</p>
+
+  <button class="replay-flow" type="button" aria-label="Reproducir animación del recorrido">
+    <span aria-hidden="true">↻</span>
+    Reproducir recorrido
+  </button>
+
+  <!-- Ilustración generada del recorrido completo -->
+  <div class="hero-art">
+    <img src="flujo-qdd-assets/01-hero-qdd.png" alt="Ilustración del flujo DOR a QA: documentos entran, atraviesan SPEC, PLAN, código y terminan en un reporte validado.">
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Diagrama del pipeline -->
+  <div class="pipeline">
+    <div class="node dor">DOR<small>brief / notas / email</small></div>
+    <div class="arrow">→</div>
+    <div class="node spec">SPEC<small>spec-generator</small></div>
+    <div class="arrow">→</div>
+    <div class="node plan">PLAN<small>spec-implementation-planner</small></div>
+    <div class="arrow">→</div>
+    <div class="node impl">IMPLEMENTACIÓN<small>plan-implementer</small></div>
+    <div class="arrow">→</div>
+    <div class="node qa">QA<small>sky-qa</small></div>
+  </div>
+  <p class="loop-note">↺ ciclo de retroalimentación: si QA encuentra defectos, <code>sky-qa-fixer</code> los triagea y aplica los fixes sobre las ramas de IMPLEMENTACIÓN, y vuelve a QA para re-test.</p>
+
+  <!-- Beneficios / "marketing" -->
+  <div class="section-title">
+    <h2>¿Por qué seguir este camino?</h2>
+    <p>Cada parada del recorrido existe para que nada se pierda entre la idea original y lo
+    que termina corriendo en producción — y para que QA tenga siempre algo concreto que validar.</p>
+  </div>
+  <div class="benefits">
+    <div class="benefit">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M13 2 5 13h6l-1 9 8-11h-6z"/></svg>
+      </div>
+      <h3>Velocidad con orden</h3>
+      <p>De un brief informal a un plan ejecutable sin reuniones intermedias: cada agente
+      retoma exactamente donde el anterior dejó el documento.</p>
+    </div>
+    <div class="benefit">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <h3>Consistencia entre repos</h3>
+      <p>Skills compartidas (commit, create-pr, clone-repo) aplican el mismo estándar en
+      cada microservicio y microfrontend tocado, sin importar quién ejecute el plan.</p>
+    </div>
+    <div class="benefit">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </div>
+      <h3>Trazabilidad de punta a punta</h3>
+      <p>DOR → spec → plan → commits → reporte de QA quedan encadenados por archivo y por
+      ticket: siempre se puede responder "¿de dónde salió este cambio?".</p>
+    </div>
+    <div class="benefit">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/><path d="M9 21h6"/><path d="M10 17v2M14 17v2"/></svg>
+      </div>
+      <h3>Conocimiento que se reutiliza</h3>
+      <p><code>fuente_conocimiento/</code> crece con cada feature: el siguiente plan ya
+      arranca sabiendo cómo está armado el sistema, no desde cero.</p>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:54px;">
+    <h2>El recorrido, parada por parada</h2>
+    <p>Cinco etapas, cinco agentes/skills, un mismo hilo conductor de archivos.</p>
+  </div>
+
+  <!-- DOR -->
+  <div class="stage dor">
+    <div class="badge">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+      <span class="step-no">01</span>
+    </div>
+    <div>
+      <h2>DOR <span class="tag">Documento de Origen / Requerimientos</span></h2>
+
+      <figure class="stage-illustration">
+        <img src="flujo-qdd-assets/02-dor.png" alt="Ilustración de notas y documentos sueltos que se ordenan hasta formar un DOR.">
+      </figure>
+
+      <div class="flow-strip">
+        <div class="flow-step"><div class="k">Tenemos</div><div class="v">una idea suelta: notas de reunión, un brief, un email del cliente</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="k">La ordenamos como</div><div class="v">un documento de requerimientos (DOR)</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="k">Queda lista para</div><div class="v">alimentar al agente <code>spec-generator</code></div></div>
+      </div>
+
+      <details class="more">
+        <summary>Ver detalle técnico</summary>
+        <div class="more-body">
+          <p class="lead">Punto de partida: cualquier insumo informal que describe lo que el negocio
+          quiere — un brief de cliente, notas de reunión, un email de un stakeholder, un user story suelto.
+          Todavía no es algo que un equipo de desarrollo pueda ejecutar directamente.</p>
+          <div class="grid-2">
+            <div>
+              <div class="box-title">Ejemplo de insumo</div>
+              <pre><code class="out-line">"Notas de la reunión con el cliente: quieren
+agregar pago con tarjeta de crédito al checkout
+de Mi Pasaje (mdp), con validación antifraude
+y reintentos si el banco rechaza la operación."</code></pre>
+            </div>
+            <div>
+              <div class="box-title">Cómo se dispara el flujo</div>
+              <pre><code><span class="prompt-line">› </span>Tengo este documento de requisitos del cliente
+sobre pagos con tarjeta, necesito saber qué hay
+que desarrollar.</code></pre>
+            </div>
           </div>
-          <aside class="status-note">Xiaohei opera la máquina; los agentes avanzan solo cuando reciben el artefacto correcto.</aside>
         </div>
+      </details>
+    </div>
+  </div>
 
-        <svg class="machine-svg" viewBox="0 0 920 360" role="img" aria-labelledby="svgTitle svgDesc">
-          <title id="svgTitle">Flujo QDD con Xiaohei</title>
-          <desc id="svgDesc">Una máquina dibujada a mano transforma idea suelta en DOR, SPEC, PLAN, código y QA, con loop de fix y retest.</desc>
+  <!-- SPEC -->
+  <div class="stage spec">
+    <div class="badge">
+      <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/><circle cx="17" cy="17.5" r="3"/><path d="m19.2 19.7 1.8 1.8" stroke-width="1.6"/></svg>
+      <span class="step-no">02</span>
+    </div>
+    <div>
+      <h2>SPEC <span class="tag">agente spec-generator</span></h2>
 
-          <path class="handdrawn thin" d="M64 249 C 120 243, 160 246, 206 250" />
-          <path class="handdrawn thin" d="M690 253 C 742 245, 807 249, 861 252" />
+      <figure class="stage-illustration">
+        <img src="flujo-qdd-assets/03-spec.png" alt="Ilustración de un DOR que atraviesa un prisma y se transforma en objetivo, datos e integraciones.">
+      </figure>
 
-          <g aria-label="Entrada informal">
-            <path class="handdrawn" d="M38 159 L127 137 L158 196 L65 216 Z" />
-            <path class="handdrawn thin" d="M64 169 L125 154 M70 187 L132 173 M78 204 L133 190" />
-            <text class="svg-label small" x="47" y="132">idea suelta</text>
-            <path class="handdrawn orange" d="M165 178 C 198 176, 225 176, 250 178" />
-            <path class="handdrawn orange" d="M236 166 L253 178 L236 190" />
-          </g>
-
-          <g aria-label="Máquina QDD">
-            <path class="handdrawn fill-paper" d="M252 112 C 307 98, 540 98, 647 116 L674 230 C 579 252, 357 253, 241 229 Z" />
-            <path class="handdrawn thin" d="M278 140 C 374 127, 541 128, 632 142" />
-            <path class="handdrawn thin" d="M267 219 C 375 234, 547 233, 648 219" />
-            <circle class="handdrawn" cx="455" cy="178" r="34" />
-            <path class="handdrawn" d="M489 178 C 525 167, 551 148, 570 119" />
-            <circle class="handdrawn fill-paper" cx="581" cy="106" r="13" />
-
-            <g id="node-dor" class="stage-node">
-              <path class="handdrawn fill-paper" d="M288 160 L348 154 L355 200 L294 206 Z" />
-              <text class="svg-label" x="304" y="186">DOR</text>
-            </g>
-            <g id="node-spec" class="stage-node">
-              <path class="handdrawn fill-paper" d="M366 151 L430 158 L425 205 L361 199 Z" />
-              <text class="svg-label" x="377" y="185">SPEC</text>
-            </g>
-            <g id="node-plan" class="stage-node">
-              <path class="handdrawn fill-paper" d="M445 158 L505 151 L514 198 L452 205 Z" />
-              <text class="svg-label" x="459" y="185">PLAN</text>
-            </g>
-            <g id="node-impl" class="stage-node">
-              <path class="handdrawn fill-paper" d="M529 154 L603 160 L598 207 L523 199 Z" />
-              <text class="svg-label" x="540" y="185">codigo</text>
-            </g>
-          </g>
-
-          <g aria-label="Xiaohei operando">
-            <path class="fill-ink" d="M410 247 C 392 230, 394 188, 421 176 C 454 161, 494 178, 499 215 C 503 244, 484 264, 452 265 C 433 266, 420 257, 410 247 Z" />
-            <circle cx="434" cy="214" r="5.2" fill="#fff" />
-            <circle cx="467" cy="212" r="5.2" fill="#fff" />
-            <path class="handdrawn thin" d="M443 238 C 452 241, 461 239, 469 236" />
-            <path class="handdrawn" d="M418 244 L404 291 M482 241 L493 291" />
-            <path class="handdrawn" d="M408 209 C 381 200, 367 188, 356 169" />
-            <path class="handdrawn" d="M495 208 C 522 195, 545 176, 563 128" />
-            <text class="svg-label blue-text" x="368" y="317">mismo hilo</text>
-            <path class="handdrawn blue thin" d="M451 302 C 513 295, 569 286, 616 267" />
-          </g>
-
-          <g aria-label="Salida QA">
-            <path class="handdrawn orange" d="M673 178 C 705 178, 733 179, 761 181" />
-            <path class="handdrawn orange" d="M747 168 L764 181 L746 192" />
-            <path class="handdrawn fill-paper" d="M773 136 L864 148 L851 232 L761 220 Z" />
-            <path class="handdrawn thin" d="M787 161 L837 168 M783 181 L834 187 M780 201 L815 205" />
-            <text class="svg-label" x="784" y="128">QA</text>
-            <text class="svg-label small" x="773" y="253">reporte QA</text>
-          </g>
-
-          <g aria-label="Loop de fix y retest">
-            <path class="handdrawn red" d="M812 236 C 770 306, 659 319, 589 244" />
-            <path class="handdrawn red" d="M587 265 L588 242 L610 250" />
-            <text class="svg-label red-text" x="657" y="319">fix + retest</text>
-          </g>
-        </svg>
-
-        <nav class="stage-rail" aria-label="Etapas QDD">
-          <button class="stage-button" type="button" data-stage="0" aria-selected="true"><span class="num">01</span><strong>DOR</strong><small>brief, notas o email</small></button>
-          <button class="stage-button" type="button" data-stage="1" aria-selected="false"><span class="num">02</span><strong>SPEC</strong><small>spec-generator</small></button>
-          <button class="stage-button" type="button" data-stage="2" aria-selected="false"><span class="num">03</span><strong>PLAN</strong><small>implementation planner</small></button>
-          <button class="stage-button" type="button" data-stage="3" aria-selected="false"><span class="num">04</span><strong>IMPLEMENTACIÓN</strong><small>plan-implementer</small></button>
-          <button class="stage-button" type="button" data-stage="4" aria-selected="false"><span class="num">05</span><strong>QA</strong><small>sky-qa + fixer</small></button>
-        </nav>
+      <div class="flow-strip">
+        <div class="flow-step"><div class="k">Tenemos</div><div class="v">un DOR técnico (notas de pagos con tarjeta para mdp)</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step cmd"><div class="k">Ejecutamos</div><div class="v">"Usá spec-generator para convertir estas notas en una spec"</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="k">Recibimos</div><div class="v">el documento <code>specs/spec-pago-con-tarjeta-checkout-mdp.md</code></div></div>
       </div>
 
-      <aside class="panel" aria-live="polite">
-        <div class="panel-head">
-          <div class="panel-kicker"><span id="stageKicker">Etapa 01</span><span id="stageAgent">Documento de origen</span></div>
-          <h2 class="panel-title" id="stageTitle">DOR</h2>
-          <p class="panel-lead" id="stageLead"></p>
+      <details class="more">
+        <summary>Ver detalle técnico</summary>
+        <div class="more-body">
+          <p class="lead">El agente <b>spec-generator</b> lee el DOR completo, primero <b>confirma el
+          alcance</b> con el usuario (qué es contexto ya construido vs. qué hay que desarrollar) y
+          luego produce una especificación técnica estructurada: objetivo, requerimientos
+          funcionales y no funcionales, entidades de datos, integraciones, cambios de UI/UX y
+          preguntas abiertas.</p>
+          <div class="grid-2">
+            <div>
+              <div class="box-title">Ejemplo de invocación</div>
+              <pre><code><span class="prompt-line">› </span>Usá el agente spec-generator para convertir
+estas notas en una especificación técnica.</code></pre>
+            </div>
+            <div>
+              <div class="box-title">Salida generada</div>
+              <pre><code><span class="file-line">specs/spec-pago-con-tarjeta-checkout-mdp.md</span>
+<span class="out-line">→ Objetivo, requerimientos func. / no func.
+→ Entidades: Payment, Card, AntifraudResult
+→ Integraciones: pasarela bancaria, microservicio
+  de órdenes, antifraude
+→ Cambios UI: nuevo paso de checkout en mdp
+→ Preguntas abiertas para el negocio</span></code></pre>
+            </div>
+          </div>
         </div>
-        <div class="panel-body">
-          <div class="handoff"><div class="label">Tenemos</div><p id="stageInput"></p></div>
-          <div class="handoff command"><div class="label">Ejecutamos</div><p><code id="stageCommand"></code></p></div>
-          <div class="handoff"><div class="label">Recibimos</div><p id="stageOutput"></p></div>
-          <div class="handoff"><div class="label">Artefactos que deja</div><ul class="artifact-list" id="stageArtifacts"></ul></div>
+      </details>
+    </div>
+  </div>
+
+  <!-- PLAN -->
+  <div class="stage plan">
+    <div class="badge">
+      <svg viewBox="0 0 24 24"><path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z"/><path d="M9 4v14M15 6v14"/><circle cx="7" cy="11" r="1" fill="#0f1117" stroke="none"/><circle cx="17" cy="9" r="1" fill="#0f1117" stroke="none"/></svg>
+      <span class="step-no">03</span>
+    </div>
+    <div>
+      <h2>PLAN <span class="tag">agente spec-implementation-planner</span></h2>
+
+      <figure class="stage-illustration">
+        <img src="flujo-qdd-assets/04-plan.png" alt="Ilustración de una spec convertida en un mapa por fases con repos y riesgos.">
+      </figure>
+
+      <div class="flow-strip">
+        <div class="flow-step"><div class="k">Tenemos</div><div class="v">la spec aprobada <code>spec-pago-con-tarjeta-checkout-mdp.md</code></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step cmd"><div class="k">Ejecutamos</div><div class="v">"Generá el plan de implementación para esta spec"</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="k">Recibimos</div><div class="v">el plan por fases <code>plans/plan-pago-con-tarjeta-checkout-mdp.md</code></div></div>
+      </div>
+
+      <details class="more">
+        <summary>Ver detalle técnico</summary>
+        <div class="more-body">
+          <p class="lead">El agente <b>spec-implementation-planner</b> toma la spec, recorre la
+          carpeta <code>fuente_conocimiento/</code> (apuntada por la variable de entorno
+          <code>FUENTE_CONOCIMIENTO</code>) para mapear qué microservicios y microfrontends están
+          <b>directa</b> e <b>indirectamente</b> impactados, arma un grafo de dependencias y el
+          camino crítico, y produce un plan detallado por fases/pasos: componente, tarea,
+          ruta física del archivo, manejo de errores, dependencias y complejidad.</p>
+          <div class="grid-2">
+            <div>
+              <div class="box-title">Ejemplo de invocación</div>
+              <pre><code><span class="prompt-line">› </span>Generá el plan de implementación para
+specs/spec-pago-con-tarjeta-checkout-mdp.md</code></pre>
+              <div class="box-title" style="margin-top:10px;">Explora</div>
+              <ul class="compact">
+                <li><b>fuente_conocimiento/frontends/mdp/</b> — checkout impactado</li>
+                <li><b>fuente_conocimiento/integraciones/microservicio/orden/</b> — flujo de pago</li>
+                <li><b>fuente_conocimiento/integraciones/microservicio/pci/</b> — pasarela / antifraude</li>
+              </ul>
+            </div>
+            <div>
+              <div class="box-title">Salida generada</div>
+              <pre><code><span class="file-line">plans/plan-pago-con-tarjeta-checkout-mdp.md</span>
+<span class="out-line">→ Prerequisitos (env vars, feature flags)
+→ Fase 1: Backend — endpoint de pago + schema
+   Payment (microservicio orden)
+→ Fase 2: Integración pasarela bancaria + retry
+   con backoff exponencial (microservicio pci)
+→ Fase 3: UI checkout con nuevo paso de pago (mdp)
+→ Mapa de componentes → repos
+→ Riesgos: schema compartido Payment, migración</span></code></pre>
+            </div>
+          </div>
         </div>
-        <div class="loop-card">
-          <h3>Loop de calidad</h3>
-          <p>Si QA encuentra defectos, <code>sky-qa-fixer</code> clasifica, corrige sobre la rama de implementación y vuelve a ejecutar retest hasta cerrar el reporte.</p>
+      </details>
+    </div>
+  </div>
+
+  <!-- IMPLEMENTACIÓN -->
+  <div class="stage impl">
+    <div class="badge">
+      <svg viewBox="0 0 24 24"><circle cx="9.5" cy="9.5" r="3"/><path d="M9.5 2.5v2M9.5 14.5v2M2.5 9.5h2M14.5 9.5h2M4.6 4.6l1.4 1.4M12.5 12.5l1.4 1.4M4.6 14.4l1.4-1.4M12.5 6.5l1.4-1.4"/><path d="m15 15 5 5M16.5 16.5 21 21"/></svg>
+      <span class="step-no">04</span>
+    </div>
+    <div>
+      <h2>IMPLEMENTACIÓN <span class="tag">skill plan-implementer + skills de soporte</span></h2>
+
+      <figure class="stage-illustration">
+        <img src="flujo-qdd-assets/05-implementacion.png" alt="Ilustración de bloques de código que forman un puente entre rama, commits, MR y doc de QA.">
+      </figure>
+
+      <div class="flow-strip">
+        <div class="flow-step"><div class="k">Tenemos</div><div class="v">el plan por fases <code>plan-pago-con-tarjeta-checkout-mdp.md</code></div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step cmd"><div class="k">Ejecutamos</div><div class="v">"plan-implementer plans/plan-pago-...md --fase 1"</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="k">Recibimos</div><div class="v">commits + MR + el <code>docs/impl-VC-4821.md</code> para QA</div></div>
+      </div>
+
+      <details class="more">
+        <summary>Ver detalle técnico</summary>
+        <div class="more-body">
+          <p class="lead">La skill <b>plan-implementer</b> ejecuta el plan paso a paso y en orden
+          topológico: extrae el ticket de Jira, propone y crea la rama, localiza o clona los repos
+          (<code>sky-search-repos</code> / <code>sky-clone-repo</code>), aplica los cambios de
+          código, commitea con formato convencional (<code>sky-commit</code>) y al cerrar produce
+          el <b>Doc de implementación detallada</b> que alimenta a QA. Las fases S0–S3.5 son de
+          solo lectura (parsean el plan y proponen el plan de ejecución); recién en S4, con
+          aprobación explícita, se escribe código y se commitea.</p>
+          <div class="grid-2">
+            <div>
+              <div class="box-title">Ejemplo de invocación</div>
+              <pre><code><span class="prompt-line">› </span>plan-implementer plans/plan-pago-con-tarjeta-checkout-mdp.md --fase 1
+
+<span class="out-line">→ Ticket detectado: VC-4821
+→ Rama propuesta: feature/VC-4821-pago-tarjeta
+→ Repos: ms-orden, ms-pci, mfe-mdp (clonados)
+→ ¿Confirmás para pasar a S4 (escritura)? [y/N]</span></code></pre>
+            </div>
+            <div>
+              <div class="box-title">Resultado al cerrar la fase</div>
+              <pre><code><span class="out-line">→ Commits: [VC-4821] feat(orden): agregar
+   endpoint de pago con tarjeta
+→ MR abierto vía sky-create-pr
+→ Doc de implementación detallada</span> <span class="file-line">→ docs/impl-VC-4821.md</span>
+<span class="out-line">   (para alimentar a sky-qa)</span></code></pre>
+            </div>
+          </div>
         </div>
-      </aside>
-    </section>
+      </details>
+    </div>
+  </div>
 
-    <section class="lower-grid" aria-label="Principios del flujo">
-      <article class="note-card"><h2>Un artefacto por salto</h2><p>Cada etapa recibe un archivo concreto y deja otro archivo trazable. Eso evita perder decisiones entre conversaciones.</p></article>
-      <article class="note-card"><h2>Contexto reutilizable</h2><p>El planner explora <code>fuente_conocimiento/</code> y los repos antes de proponer pasos, riesgos y prerequisitos.</p></article>
-      <article class="note-card"><h2>QA con retorno</h2><p>El cierre no es “terminé código”: el flujo termina cuando QA tiene evidencias, bugs triageados y summary claro.</p></article>
-    </section>
-  </main>
+  <!-- QA -->
+  <div class="stage qa">
+    <div class="badge">
+      <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.3-4.3"/><path d="m8 10.5 1.8 1.8L13.5 8.5"/></svg>
+      <span class="step-no">05</span>
+    </div>
+    <div>
+      <h2>QA <span class="tag">agente sky-qa (+ sky-qa-fixer para el loop)</span></h2>
 
-  <footer class="footer">
-    Fuente conceptual: <code>flujo-qdd.html</code> de QDD-Sky. Sitio standalone para GitHub Pages, sin dependencias externas.
-  </footer>
+      <figure class="stage-illustration">
+        <img src="flujo-qdd-assets/06-qa.png" alt="Ilustración de pruebas revisadas con lupa, reporte final y retorno a retest si aparece un bug.">
+      </figure>
 
-  <script>
-    const stages = [
-      { key: "dor", kicker: "Etapa 01", agent: "Documento de origen", title: "DOR", lead: "El flujo empieza con material informal y lo convierte en un documento de requerimientos suficientemente claro para el siguiente agente.", input: "Notas de reunión, brief, email del cliente o una idea suelta con contexto de negocio.", command: "Ordenar el insumo como DOR y confirmar alcance antes de pasar a SPEC.", output: "Un DOR listo para alimentar a spec-generator.", artifacts: ["Documento de requerimientos", "Alcance inicial", "Contexto de negocio"], node: "node-dor" },
-      { key: "spec", kicker: "Etapa 02", agent: "spec-generator", title: "SPEC", lead: "El agente convierte el DOR en una especificación técnica accionable, separando contexto ya construido de lo que hay que desarrollar.", input: "Un DOR técnico con objetivo, restricciones y señales de negocio.", command: "Usar spec-generator para producir objetivo, requerimientos, alcance y riesgos.", output: "specs/spec-pago-con-tarjeta-checkout-mdp.md", artifacts: ["Objetivo", "Requerimientos funcionales", "Riesgos y dependencias"], node: "node-spec" },
-      { key: "plan", kicker: "Etapa 03", agent: "spec-implementation-planner", title: "PLAN", lead: "El planner baja la SPEC a pasos por fase y revisa arquitectura, repos, prerequisitos y camino crítico.", input: "Spec aprobada y fuente_conocimiento disponible.", command: "Generar plan de implementación para esta spec.", output: "plans/plan-pago-con-tarjeta-checkout-mdp.md", artifacts: ["Fases", "Pasos por repo", "Prerequisitos", "Criterios de aceptación"], node: "node-plan" },
-      { key: "impl", kicker: "Etapa 04", agent: "plan-implementer", title: "IMPLEMENTACIÓN", lead: "La skill ejecuta el plan paso a paso: ticket, branch, repos, cambios, validación, commits, MR y doc para QA.", input: "Plan por fases con criterios de aceptación claros.", command: "plan-implementer plans/plan-pago-...md --fase 1", output: "Commits, MR y docs/impl-VC-4821.md.", artifacts: ["Branch", "Commits", "MR", "Doc de implementación"], node: "node-impl" },
-      { key: "qa", kicker: "Etapa 05", agent: "sky-qa", title: "QA", lead: "QA genera plan de pruebas, ejecuta casos, registra evidencias y activa el loop de fixes cuando detecta defectos.", input: "Doc de implementación detallada con cambios y alcance.", command: "sky-qa docs/impl-VC-4821.md --env qa", output: ".sky-qa/<TICKET>/summary.md con TCs, bugs y estado.", artifacts: ["test_plan.md", "Resultados TC", "Bugs", "summary.md"], node: null }
-    ];
+      <div class="flow-strip">
+        <div class="flow-step"><div class="k">Tenemos</div><div class="v">el <code>docs/impl-VC-4821.md</code> con el detalle de lo implementado</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step cmd"><div class="k">Ejecutamos</div><div class="v">"sky-qa docs/impl-VC-4821.md --env qa"</div></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><div class="k">Recibimos</div><div class="v">el reporte <code>summary.md</code> con TCs, bugs y estado</div></div>
+      </div>
 
-    const buttons = Array.from(document.querySelectorAll(".stage-button"));
-    const artifactList = document.getElementById("stageArtifacts");
-    const nodeIds = ["node-dor", "node-spec", "node-plan", "node-impl"];
+      <details class="more">
+        <summary>Ver detalle técnico</summary>
+        <div class="more-body">
+          <p class="lead">El agente <b>sky-qa</b> corre el pipeline completo de testing: genera el
+          <code>test_plan.md</code> a partir de la spec / doc de implementación, ejecuta los TCs
+          automatizables (frontend con agent-browser/playwright, backend con curl/bash, mocking
+          HTTP con peekr, verificación de datos con mongosh, logs con kubectl) y arma un reporte
+          consolidado con stats, blockers y bugs. Si aparecen defectos, <b>sky-qa-fixer</b> cierra
+          el loop QA → Implementador → QA aplicando los fixes sobre las ramas existentes.</p>
+          <div class="grid-2">
+            <div>
+              <div class="box-title">Ejemplo de invocación (pipeline completo)</div>
+              <pre><code><span class="prompt-line">› </span>sky-qa docs/impl-VC-4821.md --env qa
 
-    function setText(id, value) { document.getElementById(id).textContent = value; }
-    function renderArtifacts(items) {
-      artifactList.innerHTML = "";
-      items.forEach((item) => {
-        const li = document.createElement("li");
-        const dot = document.createElement("span");
-        dot.className = "dot";
-        li.appendChild(dot);
-        li.appendChild(document.createTextNode(item));
-        artifactList.appendChild(li);
-      });
+<span class="out-line">→ plan   .sky-qa/VC-4821/plan.md          (TC-01..TC-12)
+→ run    iteracion-1_2026-06-08/resultados-tcs/
+→ report .sky-qa/VC-4821/.../summary.md</span></code></pre>
+            </div>
+            <div>
+              <div class="box-title">Si hay defectos → loop de retest</div>
+              <pre><code><span class="prompt-line">› </span>qa-fixer sobre VC-4821, iteración 1
+
+<span class="out-line">→ BUG-01: reintento no aplica backoff exponencial
+→ Fix aplicado en ms-pci (rama existente VC-4821)
+→ Doc de re-test generado para sky-qa
+→ Vuelve a "run" → nueva iteración hasta cierre</span></code></pre>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="cta-band">
+    <h3>✦ Un mismo hilo, del brief al deploy</h3>
+    <p>No son cinco herramientas sueltas: son cinco paradas de un mismo recorrido, donde
+    el archivo que produce una etapa es exactamente el insumo que necesita la siguiente.</p>
+    <div class="pill-row">
+      <span class="pill">specs/spec-*.md</span>
+      <span class="pill">plans/plan-*.md</span>
+      <span class="pill">docs/impl-*.md</span>
+      <span class="pill">.sky-qa/&lt;TICKET&gt;/.../summary.md</span>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    <b>Resumen del recorrido:</b> un documento informal (DOR) se convierte en una especificación
+    técnica accionable (SPEC), la especificación se traduce en un plan de implementación
+    consciente de las dependencias reales del sistema (PLAN, apoyado en
+    <code>fuente_conocimiento/</code>), el plan se ejecuta y commitea repo por repo
+    (IMPLEMENTACIÓN) y finalmente QA valida el resultado y retroalimenta el ciclo hasta el
+    cierre (QA). Cada flecha del diagrama es, en la práctica, la invocación de un agente o
+    skill de <code>.agents/</code>.
+  </div>
+
+</div>
+<script>
+  (() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const progress = document.querySelector('.scroll-progress');
+    const heroArt = document.querySelector('.hero-art');
+    const flowNodes = Array.from(document.querySelectorAll('.pipeline .node'));
+    const animatedItems = document.querySelectorAll(
+      '.section-title, .benefit, .stage, .cta-band, .footer-note'
+    );
+
+    const updateProgress = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+      progress.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+    };
+
+    window.addEventListener('scroll', updateProgress, { passive: true });
+    window.addEventListener('resize', updateProgress);
+    updateProgress();
+
+    animatedItems.forEach((item, index) => {
+      item.classList.add('revealable');
+      item.style.setProperty('--reveal-delay', `${Math.min(index % 4, 3) * 70}ms`);
+    });
+
+    if ('IntersectionObserver' in window && !prefersReducedMotion) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.14, rootMargin: '0px 0px -8% 0px' });
+
+      animatedItems.forEach((item) => observer.observe(item));
+    } else {
+      animatedItems.forEach((item) => item.classList.add('is-visible'));
     }
-    function selectStage(index) {
-      const stage = stages[index];
-      buttons.forEach((button, buttonIndex) => button.setAttribute("aria-selected", String(buttonIndex === index)));
-      setText("stageKicker", stage.kicker);
-      setText("stageAgent", stage.agent);
-      setText("stageTitle", stage.title);
-      setText("stageLead", stage.lead);
-      setText("stageInput", stage.input);
-      setText("stageCommand", stage.command);
-      setText("stageOutput", stage.output);
-      renderArtifacts(stage.artifacts);
-      nodeIds.forEach((id) => {
-        const node = document.getElementById(id);
-        node.classList.toggle("is-muted", Boolean(stage.node) && id !== stage.node);
-        node.classList.toggle("is-active", id === stage.node);
+
+    const replayFlow = () => {
+      if (prefersReducedMotion) return;
+
+      heroArt?.classList.remove('is-replaying');
+      if (heroArt) {
+        void heroArt.offsetHeight;
+        heroArt.classList.add('is-replaying');
+        window.setTimeout(() => heroArt.classList.remove('is-replaying'), 1000);
+      }
+
+      flowNodes.forEach((node) => node.classList.remove('flowing'));
+      flowNodes.forEach((node, index) => {
+        window.setTimeout(() => node.classList.add('flowing'), 230 + index * 260);
+        window.setTimeout(() => node.classList.remove('flowing'), 920 + index * 260);
       });
-    }
-    buttons.forEach((button) => button.addEventListener("click", () => selectStage(Number(button.dataset.stage))));
-    selectStage(0);
-  </script>
+    };
+
+    document.querySelector('.replay-flow')?.addEventListener('click', replayFlow);
+    window.setTimeout(replayFlow, 450);
+  })();
+</script>
 </body>
 </html>
